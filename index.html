@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Texto Avançado</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .toolbar {
+            background: #f8f9fa;
+            padding: 15px;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 5px;
+            padding: 5px;
+            border-right: 1px solid #dee2e6;
+        }
+
+        .toolbar-group:last-child {
+            border-right: none;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .btn:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 5px;
+            z-index: 1000;
+        }
+
+        .btn:hover .tooltip {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: #333;
+        }
+
+        select, input[type="color"], input[type="number"] {
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 32px;
+            padding: 2px;
+        }
+
+        .editor-container {
+            padding: 20px;
+            min-height: 500px;
+        }
+
+        #editor {
+            min-height: 450px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.6;
+            background: white;
+        }
+
+        #editor:focus {
+            border-color: #667eea;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-top: 2px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .stats {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        [data-tooltip] {
+            position: relative;
+            cursor: help;
+            border-bottom: 2px dotted #667eea;
+        }
+
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 5px;
+        }
+
+        [data-tooltip]:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+            z-index: 1000;
+        }
+
+        .highlight {
+            background: yellow;
+            padding: 2px 0;
+        }
+
+        @media print {
+            .toolbar, .footer {
+                display: none;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .toolbar {
+                gap: 5px;
+            }
+            .btn {
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+            .header h1 {
+                font-size: 22px;
+            }
+        }
+
+        .find-replace-bar {
+            background: #fff3cd;
+            padding: 10px 20px;
+            border-bottom: 1px solid #ffc107;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .find-replace-bar.active {
+            display: flex;
+        }
+
+        .find-replace-bar input {
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            flex: 1;
+            min-width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Editor de Texto Avançado</h1>
+            <p>Editor completo com formatação, tooltips e muito mais</p>
+        </div>
+
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <button class="btn btn-icon" onclick="execCmd('undo')">
+                    ↶
+                    <span class="tooltip">Desfazer (Ctrl+Z)</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('redo')">
+                    ↷
+                    <span class="tooltip">Refazer (Ctrl+Y)</span>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <select onchange="execCmd('fontName', this.value); this.selectedIndex=0;">
+                    <option value="">Fonte</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Comic Sans MS">Comic Sans MS</option>
+                </select>
+                <select onchange="execCmd('fontSize', this.value); this.selectedIndex=0;">
+                    <option value="">Tamanho</option>
+                    <option value="1">Muito Pequeno</option>
+                    <option value="2">Pequeno</option>
+                    <option value="3">Normal</option>
+                    <option value="4">Médio</option>
+                    <option value="5">Grande</option>
+                    <option value="6">Muito Grande</option>
+                    <option value="7">Enorme</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="btn btn-icon" onclick="execCmd('bold')">
+                    <b>B</b>
+                    <span class="tooltip">Negrito (Ctrl+B)</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('italic')">
+                    <i>I</i>
+                    <span class="tooltip">Itálico (Ctrl+I)</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('underline')">
+                    <u>U</u>
+                    <span class="tooltip">Sublinhado (Ctrl+U)</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('strikeThrough')">
+                    <s>S</s>
+                    <span class="tooltip">Tachado</span>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <input type="color" id="textColor" onchange="execCmd('foreColor', this.value)" title="Cor do texto">
+                <input type="color" id="bgColor" onchange="execCmd('backColor', this.value)" title="Cor de fundo">
+                <button class="btn" onclick="execCmd('removeFormat')">
+                    🧹
+                    <span class="tooltip">Limpar Formatação</span>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="btn btn-icon" onclick="execCmd('justifyLeft')">
+                    ≡
+                    <span class="tooltip">Alinhar à Esquerda</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('justifyCenter')">
+                    ≣
+                    <span class="tooltip">Centralizar</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('justifyRight')">
+                    ≡
+                    <span class="tooltip">Alinhar à Direita</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('justifyFull')">
+                    ≣
+                    <span class="tooltip">Justificar</span>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="btn btn-icon" onclick="execCmd('insertOrderedList')">
+                    1.
+                    <span class="tooltip">Lista Numerada</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('insertUnorderedList')">
+                    •
+                    <span class="tooltip">Lista com Marcadores</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('indent')">
+                    →
+                    <span class="tooltip">Aumentar Recuo</span>
+                </button>
+                <button class="btn btn-icon" onclick="execCmd('outdent')">
+                    ←
+                    <span class="tooltip">Diminuir Recuo</span>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="btn" onclick="insertLink()">
+                    🔗
+                    <span class="tooltip">Inserir Link</span>
+                </button>
+                <button class="btn" onclick="insertImage()">
+                    🖼️
+                    <span class="tooltip">Inserir Imagem</span>
+                </button>
+                <button class="btn" onclick="insertTable()">
+                    ⊞
+                    <span class="tooltip">Inserir Tabela</span>
+                </button>
+                <button class="btn" onclick="showTooltipModal()">
+                    💬
+                    <span class="tooltip">Adicionar Tooltip</span>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="btn" onclick="toggleFindReplace()">
+                    🔍
+                    <span class="tooltip">Localizar e Substituir</span>
+                </button>
+                <button class="btn" onclick="highlightText()">
+                    ✨
+                    <span class="tooltip">Realçar Texto</span>
+                </button>
+                <button class="btn" onclick="insertDate()">
+                    📅
+                    <span class="tooltip">Inserir Data</span>
+                </button>
+            </div>
+
+            <div class="toolbar-group">
+                <button class="btn" onclick="exportHTML()">
+                    💾 HTML
+                    <span class="tooltip">Exportar como HTML</span>
+                </button>
+                <button class="btn" onclick="exportText()">
+                    📄 TXT
+                    <span class="tooltip">Exportar como Texto</span>
+                </button>
+                <button class="btn" onclick="printDocument()">
+                    🖨️
+                    <span class="tooltip">Imprimir</span>
+                </button>
+                <button class="btn" onclick="clearEditor()">
+                    🗑️
+                    <span class="tooltip">Limpar Tudo</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="find-replace-bar" id="findReplaceBar">
+            <input type="text" id="findInput" placeholder="Localizar...">
+            <button class="btn btn-primary" onclick="findText()">Localizar</button>
+            <input type="text" id="replaceInput" placeholder="Substituir por...">
+            <button class="btn btn-primary" onclick="replaceText()">Substituir</button>
+            <button class="btn btn-primary" onclick="replaceAll()">Substituir Todos</button>
+            <button class="btn btn-secondary" onclick="toggleFindReplace()">✕</button>
+        </div>
+
+        <div class="editor-container">
+            <div id="editor" contenteditable="true" spellcheck="true">
+                <h2>Bem-vindo ao Editor de Texto Avançado! 🎉</h2>
+                <p>Este é um editor de texto completo com diversas funcionalidades:</p>
+                <ul>
+                    <li><strong>Formatação de texto</strong>: negrito, itálico, sublinhado, cores e muito mais</li>
+                    <li><span data-tooltip="Passe o mouse sobre textos com linha pontilhada para ver as dicas!">Tooltips interativos</span> para ajudar os usuários</li>
+                    <li>Inserção de <a href="https://example.com">links</a>, imagens e tabelas</li>
+                    <li>Sistema de localizar e substituir texto</li>
+                    <li>Exportação em múltiplos formatos</li>
+                </ul>
+                <p>Comece a digitar ou use a barra de ferramentas acima para formatar seu texto! ✍️</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div class="stats">
+                <span id="charCount">Caracteres: 0</span> |
+                <span id="wordCount">Palavras: 0</span> |
+                <span id="lineCount">Linhas: 0</span>
+            </div>
+            <div>
+                <button class="btn" onclick="toggleDarkMode()">🌓 Modo Escuro</button>
+                <button class="btn" onclick="showHelp()">❓ Ajuda</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Tooltip -->
+    <div class="modal" id="tooltipModal">
+        <div class="modal-content">
+            <h2>Adicionar Tooltip</h2>
+            <div class="form-group">
+                <label>Texto a ser marcado:</label>
+                <input type="text" id="tooltipText" placeholder="Digite o texto que terá o tooltip">
+            </div>
+            <div class="form-group">
+                <label>Mensagem do tooltip:</label>
+                <textarea id="tooltipMessage" rows="3" placeholder="Digite a mensagem que aparecerá ao passar o mouse"></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeTooltipModal()">Cancelar</button>
+                <button class="btn-primary" onclick="addTooltip()">Adicionar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Link -->
+    <div class="modal" id="linkModal">
+        <div class="modal-content">
+            <h2>Inserir Link</h2>
+            <div class="form-group">
+                <label>Texto do link:</label>
+                <input type="text" id="linkText" placeholder="Digite o texto do link">
+            </div>
+            <div class="form-group">
+                <label>URL:</label>
+                <input type="url" id="linkUrl" placeholder="https://exemplo.com">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeLinkModal()">Cancelar</button>
+                <button class="btn-primary" onclick="addLink()">Inserir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Imagem -->
+    <div class="modal" id="imageModal">
+        <div class="modal-content">
+            <h2>Inserir Imagem</h2>
+            <div class="form-group">
+                <label>URL da imagem:</label>
+                <input type="url" id="imageUrl" placeholder="https://exemplo.com/imagem.jpg">
+            </div>
+            <div class="form-group">
+                <label>Texto alternativo:</label>
+                <input type="text" id="imageAlt" placeholder="Descrição da imagem">
+            </div>
+            <div class="form-group">
+                <label>Largura (px):</label>
+                <input type="number" id="imageWidth" placeholder="300" value="300">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeImageModal()">Cancelar</button>
+                <button class="btn-primary" onclick="addImage()">Inserir</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Tabela -->
+    <div class="modal" id="tableModal">
+        <div class="modal-content">
+            <h2>Inserir Tabela</h2>
+            <div class="form-group">
+                <label>Linhas:</label>
+                <input type="number" id="tableRows" min="1" max="20" value="3">
+            </div>
+            <div class="form-group">
+                <label>Colunas:</label>
+                <input type="number" id="tableCols" min="1" max="10" value="3">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="closeTableModal()">Cancelar</button>
+                <button class="btn-primary" onclick="addTable()">Inserir</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        let darkMode = false;
+
+        // Atualizar estatísticas
+        editor.addEventListener('input', updateStats);
+        updateStats();
+
+        function updateStats() {
+            const text = editor.innerText;
+            const chars = text.length;
+            const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+            const lines = text.split('\n').length;
+
+            document.getElementById('charCount').textContent = `Caracteres: ${chars}`;
+            document.getElementById('wordCount').textContent = `Palavras: ${words}`;
+            document.getElementById('lineCount').textContent = `Linhas: ${lines}`;
+        }
+
+        // Comandos de formatação
+        function execCmd(command, value = null) {
+            document.execCommand(command, false, value);
+            editor.focus();
+        }
+
+        // Atalhos de teclado
+        editor.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'b':
+                        e.preventDefault();
+                        execCmd('bold');
+                        break;
+                    case 'i':
+                        e.preventDefault();
+                        execCmd('italic');
+                        break;
+                    case 'u':
+                        e.preventDefault();
+                        execCmd('underline');
+                        break;
+                    case 's':
+                        e.preventDefault();
+                        exportHTML();
+                        break;
+                    case 'f':
+                        e.preventDefault();
+                        toggleFindReplace();
+                        break;
+                }
+            }
+        });
+
+        // Modal de Tooltip
+        function showTooltipModal() {
+            const selection = window.getSelection().toString();
+            document.getElementById('tooltipText').value = selection;
+            document.getElementById('tooltipModal').classList.add('active');
+        }
+
+        function closeTooltipModal() {
+            document.getElementById('tooltipModal').classList.remove('active');
+        }
+
+        function addTooltip() {
+            const text = document.getElementById('tooltipText').value;
+            const message = document.getElementById('tooltipMessage').value;
+
+            if (text && message) {
+                const html = `<span data-tooltip="${message}">${text}</span>`;
+                document.execCommand('insertHTML', false, html);
+                closeTooltipModal();
+                document.getElementById('tooltipText').value = '';
+                document.getElementById('tooltipMessage').value = '';
+            }
+        }
+
+        // Modal de Link
+        function insertLink() {
+            const selection = window.getSelection().toString();
+            document.getElementById('linkText').value = selection;
+            document.getElementById('linkModal').classList.add('active');
+        }
+
+        function closeLinkModal() {
+            document.getElementById('linkModal').classList.remove('active');
+        }
+
+        function addLink() {
+            const text = document.getElementById('linkText').value;
+            const url = document.getElementById('linkUrl').value;
+
+            if (text && url) {
+                const html = `<a href="${url}" target="_blank">${text}</a>`;
+                document.execCommand('insertHTML', false, html);
+                closeLinkModal();
+                document.getElementById('linkText').value = '';
+                document.getElementById('linkUrl').value = '';
+            }
+        }
+
+        // Modal de Imagem
+        function insertImage() {
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+
+        function addImage() {
+            const url = document.getElementById('imageUrl').value;
+            const alt = document.getElementById('imageAlt').value;
+            const width = document.getElementById('imageWidth').value;
+
+            if (url) {
+                const html = `<img src="${url}" alt="${alt}" width="${width}" style="max-width:100%; height:auto; border-radius:8px; margin:10px 0;">`;
+                document.execCommand('insertHTML', false, html);
+                closeImageModal();
+                document.getElementById('imageUrl').value = '';
+                document.getElementById('imageAlt').value = '';
+            }
+        }
+
+        // Modal de Tabela
+        function insertTable() {
+            document.getElementById('tableModal').classList.add('active');
+        }
+
+        function closeTableModal() {
+            document.getElementById('tableModal').classList.remove('active');
+        }
+
+        function addTable() {
+            const rows = parseInt(document.getElementById('tableRows').value);
+            const cols = parseInt(document.getElementById('tableCols').value);
+
+            let html = '<table style="border-collapse:collapse; width:100%; margin:10px 0;"><tbody>';
+            for (let i = 0; i < rows; i++) {
+                html += '<tr>';
+                for (let j = 0; j < cols; j++) {
+                    html += '<td style="border:1px solid #ddd; padding:8px;">Célula</td>';
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+
+            document.execCommand('insertHTML', false, html);
+            closeTableModal();
+        }
+
+        // Localizar e Substituir
+        function toggleFindReplace() {
+            const bar = document.getElementById('findReplaceBar');
+            bar.classList.toggle('active');
+            if (bar.classList.contains('active')) {
+                document.getElementById('findInput').focus();
+            }
+        }
+
+        function findText() {
+            const text = document.getElementById('findInput').value;
+            if (text) {
+                window.find(text);
+            }
+        }
+
+        function replaceText() {
+            const findText = document.getElementById('findInput').value;
+            const replaceWith = document.getElementById('replaceInput').value;
+
+            if (findText) {
+                const selection = window.getSelection();
+                if (selection.toString() === findText) {
+                    document.execCommand('insertText', false, replaceWith);
+                } else {
+                    window.find(findText);
+                }
+            }
+        }
+
+        function replaceAll() {
+            const findText = document.getElementById('findInput').value;
+            const replaceWith = document.getElementById('replaceInput').value;
+
+            if (findText) {
+                const content = editor.innerHTML;
+                const regex = new RegExp(findText, 'g');
+                editor.innerHTML = content.replace(regex, replaceWith);
+            }
+        }
+
+        // Realçar texto
+        function highlightText() {
+            execCmd('backColor', '#ffff00');
+        }
+
+        // Inserir data
+        function insertDate() {
+            const date = new Date().toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.execCommand('insertText', false, date);
+        }
+
+        // Exportar HTML
+        function exportHTML() {
+            const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documento</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        [data-tooltip] { position: relative; cursor: help; border-bottom: 2px dotted #667eea; }
+        [data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 12px; border-radius: 4px; font-size: 13px; white-space: nowrap; z-index: 1000; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+${editor.innerHTML}
+</body>
+</html>`;
+
+            downloadFile(html, 'documento.html', 'text/html');
+        }
+
+        // Exportar texto
+        function exportText() {
+            const text = editor.innerText;
+            downloadFile(text, 'documento.txt', 'text/plain');
+        }
+
+        // Função auxiliar para download
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Imprimir
+        function printDocument() {
+            window.print();
+        }
+
+        // Limpar editor
+        function clearEditor() {
+            if (confirm('Tem certeza que deseja limpar todo o conteúdo?')) {
+                editor.innerHTML = '';
+                updateStats();
+            }
+        }
+
+        // Modo escuro
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            if (darkMode) {
+                document.body.style.background = '#1a1a2e';
+                editor.style.background = '#16213e';
+                editor.style.color = '#eee';
+            } else {
+                document.body.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                editor.style.background = 'white';
+                editor.style.color = '#000';
+            }
+        }
+
+        // Ajuda
+        function showHelp() {
+            alert(`Editor de Texto Avançado - Ajuda
+
+Atalhos de Teclado:
+• Ctrl+B: Negrito
+• Ctrl+I: Itálico
+• Ctrl+U: Sublinhado
+• Ctrl+S: Salvar como HTML
+• Ctrl+F: Localizar e Substituir
+
+Recursos:
+✓ Formatação completa de texto
+✓ Inserção de links, imagens e tabelas
+✓ Tooltips interativos
+✓ Localizar e substituir
+✓ Exportação em múltiplos formatos
+✓ Contadores de palavras e caracteres
+✓ Modo escuro
+✓ Impressão de documentos
+
+Dica: Selecione texto antes de usar os botões de formatação!`);
+        }
+
+        // Fechar modais ao clicar fora
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        // Auto-save no localStorage
+        setInterval(() => {
+            localStorage.setItem('editorContent', editor.innerHTML);
+        }, 5000);
+
+        // Carregar conteúdo salvo
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('editorContent');
+            if (saved && saved !== editor.innerHTML) {
+                if (confirm('Deseja recuperar o conteúdo salvo anteriormente?')) {
+                    editor.innerHTML = saved;
+                    updateStats();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
